@@ -2,40 +2,34 @@ import re
 from urllib.parse import urlparse, urljoin, urlunparse
 from bs4 import BeautifulSoup, SoupStrainer
 import urllib.robotparser
-import urllib.error
-import hashlib
 import lxml
+
 
 links = set()
 unique_urls = set()
 subdomain_pages = {}
-seen_hashes = set()
+
 
 # def scraper(url, resp):
 #     linky = extract_next_links(url, resp)
 #     return [link for link in linky if is_valid(link)]
 def scraper(url, resp):
+    # check text url to see if it has already been scraped before
+
     global subdomain_pages
     linky = extract_next_links(url, resp)
     for link in linky:
         if is_valid(link):
-            normalized_link = normalize_url(link)
-            content_hash = get_content_hash(resp.raw_response.content)
-            # Check if the content hash is already seen
-            if content_hash in seen_hashes:
-                continue
-            else:
-                # Mark this content hash as seen
-                seen_hashes.add(content_hash)
             # Normalize URL to handle duplicates based on the final URL form
+            normalized_link = normalize_url(link)
             subdomain = extract_subdomain(normalized_link)
             if subdomain:
                 if subdomain in subdomain_pages and subdomain != 'www.ics.uci.edu':
                     subdomain_pages[subdomain] += 1
-                    print(f' incremented one to {subdomain} , {normalized_link}')
+                    print(f' incremented one to {subdomain}: {normalized_link}')
                 else:
                     subdomain_pages[subdomain] = 1
-                    print(f'new subdomain to {subdomain}, {normalized_link}')
+                    print(f'new subdomain to {subdomain}: {normalized_link}')
     return [link for link in linky if is_valid(link)]
 
 
@@ -60,35 +54,32 @@ def report_subdomains():
         print(f"http://{subdomain}, {len(subdomain_pages[subdomain])}")
 
 
-#using normalize_url
+# using normalize_url
 def extract_next_links(url, resp):
     global links
-    if resp.status in range(200, 300):# Check if the response status is OK
-        if not has_minimal_content(resp.content):
+    if resp.status in range(200, 300):  # Check if the response status is OK
+        if not has_minimal_content(resp.raw_response.content):
             print(f"Skipping dead or empty page at {url}")
             return []  # Skip processing this URL
-        if resp.status in (204, 205):
-            try:
-                soup = BeautifulSoup(resp.raw_response.content, 'lxml')
-                for link in soup.find_all('a', href=True):  # Extract all hyperlinks
-                    if '@' not in link['href']:
-                        # Correct handling of relative URLs
-                        abs_url = urljoin(resp.url, link['href'])
-                        normalized_url = normalize_url(abs_url)  # Normalize the URL
-                        if is_polite(normalized_url) and is_valid(normalized_url):  # Check the normalized URL
-                            if normalized_url not in links:
-                                print(f'Link added: {normalized_url}')
-                                links.add(normalized_url)
-                return list(links)
-            except Exception as e:
-                print(f"Error parsing the content from {url}: {e}")
-                return []
+        try:
+            soup = BeautifulSoup(resp.raw_response.content, 'lxml')
+            for link in soup.find_all('a', href = True):  # Extract all hyperlinks
+                if '@' not in link['href']:
+                    # Correct handling of relative URLs
+                    abs_url = urljoin(resp.url, link['href'])
+                    normalized_url = normalize_url(abs_url)  # Normalize the URL
+                    if is_polite(normalized_url) and is_valid(
+                            normalized_url):  # Check the normalized URL
+                        if normalized_url not in links:
+                            print(f'Link added: {normalized_url}')
+                            links.add(normalized_url)
+            return list(links)
+        except Exception as e:
+            print(f"Error parsing the content from {url}: {e}")
+            return []
     else:
         print(f"Failed to process URL: {url} due to status: {resp.status}")
         return []  # If response is not OK, return an empty list
-
-
-
 
 
 def is_valid(url):
@@ -154,10 +145,10 @@ def is_polite(url):
     return can_fetch
 
 
-#first thing in the report number of unique URLs:
+# first thing in the report number of unique URLs:
 
 
-#newest version
+# newest version
 def normalize_url(url):
     """Normalize a URL by removing the fragment, lowercasing it, and stripping unnecessary trailing slashes, especially for root domains."""
     parsed_url = urlparse(url)
@@ -174,16 +165,10 @@ def normalize_url(url):
     normalized_url = urlunparse((scheme, netloc, path, parsed_url.params, parsed_url.query, ''))
     return normalized_url
 
+
 def add_url(url):
     normalized = normalize_url(url)
     unique_urls.add(normalized)
-
-def get_content_hash(html_content):
-    """ This function extracts text from HTML and computes a hash of it. """
-    soup = BeautifulSoup(html_content, 'lxml')
-    text = soup.get_text()
-    hash_object = hashlib.md5(text.encode())
-    return hash_object.hexdigest()
 
 
 def has_minimal_content(html_content):
@@ -191,9 +176,9 @@ def has_minimal_content(html_content):
     if len(html_content.strip()) == 0:
         return False
     soup = BeautifulSoup(html_content, 'html.parser')
-    text = soup.get_text(strip=True)
+    text = soup.get_text(strip = True)
     # Check if the text content is too short, indicating a lack of real content
-    if len(text) < 50:  # Example threshold of 50 words
+    if len(text) < 50:  # Example threshold, adjust based on typical content length
         return False
     return True
 
