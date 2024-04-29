@@ -3,9 +3,9 @@ from urllib.parse import urlparse, urljoin, urlunparse
 from bs4 import BeautifulSoup, SoupStrainer
 import urllib.robotparser
 import lxml
+import counter
 
 
-links = set()
 unique_urls = set()
 subdomain_pages = {}
 
@@ -13,7 +13,9 @@ subdomain_pages = {}
 # def scraper(url, resp):
 #     linky = extract_next_links(url, resp)
 #     return [link for link in linky if is_valid(link)]
-def scraper(url, resp):
+def scraper(url, resp, counter):
+    # todo: only want to scrape the url and resp given in the parameter. the extract
+    # next links function is used to find the subdomains of the url given
     # check text url to see if it has already been scraped before
 
     global subdomain_pages
@@ -55,14 +57,19 @@ def report_subdomains():
 
 
 # using normalize_url
-def extract_next_links(url, resp):
-    global links
+def extract_next_links(url, resp, counter):
+    # todo: change the logic to understand that we do not need to do too much in this and only need to
+    # find the subdomains or hyperlinks of the url
+    links = set()
     if resp.status in range(200, 300):  # Check if the response status is OK
         if not has_minimal_content(resp.raw_response.content):
             print(f"Skipping dead or empty page at {url}")
             return []  # Skip processing this URL
         try:
             soup = BeautifulSoup(resp.raw_response.content, 'lxml')
+
+            save_data(resp.url, soup, counter)
+
             for link in soup.find_all('a', href = True):  # Extract all hyperlinks
                 if '@' not in link['href']:
                     # Correct handling of relative URLs
@@ -183,4 +190,7 @@ def has_minimal_content(html_content):
     return True
 
 
-
+# Funciton to get and save the data of the websites encountered
+def save_data(url, soup, counter):
+    counter.update_unique_urls(url)
+    counter.add_words(soup, url)
