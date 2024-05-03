@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup, SoupStrainer
 import urllib.robotparser
 import lxml
 import counter
+import urllib.error
 
 
 unique_urls = set()
@@ -13,53 +14,40 @@ subdomain_pages = {}
 # def scraper(url, resp):
 #     linky = extract_next_links(url, resp)
 #     return [link for link in linky if is_valid(link)]
-def scraper(url, resp, counter):
+def scraper(url, resp, counter_obj) -> list:
     # todo: only want to scrape the url and resp given in the parameter. the extract
     # next links function is used to find the subdomains of the url given
     # check text url to see if it has already been scraped before
+    # check the parameter url is unique
 
-    global subdomain_pages
-    linky = extract_next_links(url, resp)
-    for link in linky:
-        if is_valid(link):
-            # Normalize URL to handle duplicates based on the final URL form
-            normalized_link = normalize_url(link)
-            subdomain = extract_subdomain(normalized_link)
-            if subdomain:
-                if subdomain in subdomain_pages and subdomain != 'www.ics.uci.edu':
-                    subdomain_pages[subdomain] += 1
-                    print(f' incremented one to {subdomain}: {normalized_link}')
-                else:
-                    subdomain_pages[subdomain] = 1
-                    print(f'new subdomain to {subdomain}: {normalized_link}')
+    linky = extract_next_links(url, resp, counter_obj)
+    counter_obj.update_unique_urls(url)
+    check_ics_subdomain(resp, counter_obj)
+    # for link in linky:
+    #     if is_valid(link):
+    #         # Normalize URL to handle duplicates based on the final URL form
+    #         normalized_link = normalize_url(link)
+    #         if subdomain:
+    #             if subdomain in counter_obj.subdomain_pages and subdomain != 'www.ics.uci.edu':
+    #                 counter_obj.subdomain_pages[subdomain] += 1
+    #                 print(f' incremented one to {subdomain}: {normalized_link}')
+    #             else:
+    #                 counter_obj.subdomain_pages[subdomain] = 1
+    #                 print(f'new subdomain to {subdomain}: {normalized_link}')
     return [link for link in linky if is_valid(link)]
 
 
-# def extract_subdomain(url):
-#     """ Extract subdomain from a URL. """
-#     parsed = urlparse(url)
-#     return parsed.netloc
-def extract_subdomain(url):
-    """ Extract subdomain from a URL and ensure it's a subdomain of ics.uci.edu. """
-    parsed = urlparse(url)
-    parts = parsed.netloc.split('.')
-    # Check if the domain is exactly 'ics.uci.edu'
-    if parts[-3:] == ['ics', 'uci', 'edu']:
-        return parsed.netloc
-    else:
-        return None
+def check_ics_subdomain(resp, counter_obj):
+    # check if the resp.url is an ics subdomain and if it is, it will update the ics subdomain
+    # dicitonary of the counter object
+    parsed = urlparse(resp.url)
+    if parsed.netloc.endswith("ics.uci.edu"):
+        counter_obj.update_ics_subdomains(parsed)
 
-
-def report_subdomains():
-    """ Reports the number of unique pages per subdomain in an ordered fashion. """
-    for subdomain in sorted(subdomain_pages.keys()):
-        print(f"http://{subdomain}, {len(subdomain_pages[subdomain])}")
 
 
 # using normalize_url
-def extract_next_links(url, resp, counter):
-    # todo: change the logic to understand that we do not need to do too much in this and only need to
-    # find the subdomains or hyperlinks of the url
+def extract_next_links(url, resp, counter_obj) -> list:
     links = set()
     if resp.status in range(200, 300):  # Check if the response status is OK
         if not has_minimal_content(resp.raw_response.content):
@@ -68,19 +56,22 @@ def extract_next_links(url, resp, counter):
         try:
             soup = BeautifulSoup(resp.raw_response.content, 'lxml')
 
-            save_data(resp.url, soup, counter)
+            # Gets all the page data from the url and resp given
+            save_data(resp.url, soup, counter_obj)
 
-            for link in soup.find_all('a', href = True):  # Extract all hyperlinks
-                if '@' not in link['href']:
+            for link in soup.find_all():  # Extract all hyperlinks
+
+                if 'href' in link.attrs:
                     # Correct handling of relative URLs
                     abs_url = urljoin(resp.url, link['href'])
                     normalized_url = normalize_url(abs_url)  # Normalize the URL
-                    if is_polite(normalized_url) and is_valid(
-                            normalized_url):  # Check the normalized URL
-                        if normalized_url not in links:
-                            print(f'Link added: {normalized_url}')
-                            links.add(normalized_url)
+
+                    if is_polite(normalized_url) and is_valid(normalized_url):  # Check the normalized URL
+                        links.add(normalized_url)
+                        print(f'Link added! {normalized_url}')
+
             return list(links)
+
         except Exception as e:
             print(f"Error parsing the content from {url}: {e}")
             return []
@@ -89,7 +80,7 @@ def extract_next_links(url, resp, counter):
         return []  # If response is not OK, return an empty list
 
 
-def is_valid(url):
+def is_valid(url) -> bool:
     try:
         parsed = urlparse(url)
         if parsed.scheme not in {"http", "https"}:
@@ -119,7 +110,7 @@ def is_valid(url):
         return False
 
 
-def is_polite(url):
+def is_polite(url) -> bool:
     """ Checks if the URL can be fetched according to the robots.txt rules. """
     parsed_url = urlparse(url)
     robots_url = f"{parsed_url.scheme}://{parsed_url.netloc}/robots.txt"
@@ -156,7 +147,7 @@ def is_polite(url):
 
 
 # newest version
-def normalize_url(url):
+def normalize_url(url) -> str:
     """Normalize a URL by removing the fragment, lowercasing it, and stripping unnecessary trailing slashes, especially for root domains."""
     parsed_url = urlparse(url)
     # Lowercase the scheme and netloc
@@ -178,7 +169,7 @@ def add_url(url):
     unique_urls.add(normalized)
 
 
-def has_minimal_content(html_content):
+def has_minimal_content(html_content) -> bool:
     """ Check if the HTML content is empty or trivially small. """
     if len(html_content.strip()) == 0:
         return False
@@ -190,7 +181,7 @@ def has_minimal_content(html_content):
     return True
 
 
-# Funciton to get and save the data of the websites encountered
-def save_data(url, soup, counter):
-    counter.update_unique_urls(url)
-    counter.add_words(soup, url)
+# Function to get and save the data of the websites encountered
+def save_data(url, soup, counter_obj):
+    counter_obj.update_unique_urls(url)
+    counter_obj.add_words(soup, url)

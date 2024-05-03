@@ -1,8 +1,10 @@
+import re
+
 class Counter:
     def __init__(self):
         self.links = set()
         self.unique_urls = set()
-        self.subdomain_pages = {}
+        self.ics_subdomains = {}
         self.words = {}
         self.longest_page = ("url", 0)
         self.stop_words = ["a", "about", "above", "after", "again", "against", "all", "am", "an",
@@ -43,18 +45,31 @@ class Counter:
                            "you'll",
                            "you're", "you've", "your", "yours", "yourself", "yourselves"]
 
-    def update_unique_urls(self, url):
+    def update_unique_urls(self, url) -> None:
+
+        # Make sure the url is not in the unique_urls set before adding it
         if url not in self.unique_urls:
             self.unique_urls.add(url)
             print(f"Added a unique url {url}!")
         else:
             print("URL not unique")
 
-    def add_words(self, soup, url):
+    def update_ics_subdomains(self, url):
+        if url in self.ics_subdomains:
+            self.ics_subdomains[url] += 1
+        else:
+            self.ics_subdomains[url] = 1
+
+    def add_words(self, soup, url) -> None:
         word_count = 0
+        word_pattern = re.compile(r"\b[a-zA-Z\'.]+\b")
+
+        for tag in soup(['script', 'style']):
+            tag.decompose()
+
         for thing in soup.find_all():
             # Extract the text of the element and split it into a list of strings
-            wordy = thing.get_text().split()
+            wordy = word_pattern.findall(thing.get_text().lower())
 
             # Go through each word in the list
             for word in wordy:
@@ -63,6 +78,7 @@ class Counter:
                 # Make sure the word is not a stop word
                 if word not in self.stop_words:
 
+                    # If the word is already in the word dictionary, increment it, if not set its count to 1
                     if word in self.words:
                         self.words[word] += 1
                     else:
@@ -71,5 +87,7 @@ class Counter:
         # Add a check to see if the word count of the current page is longer than the longest page
         if word_count > self.longest_page[1]:
             self.longest_page = (url, word_count)
+
+
 
 
