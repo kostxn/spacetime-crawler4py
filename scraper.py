@@ -48,9 +48,9 @@ def check_ics_subdomain(resp, counter_obj):
 def extract_next_links(url, resp, counter_obj) -> list:
     links = set()
     if resp.status in range(200, 300):  # Check if the response status is OK
-        if not has_minimal_content(resp.raw_response.content):
-            print(f"Skipping dead or empty page at {url}")
-            return []  # Skip processing this URL
+        if not has_acceptable_size(resp):
+            print(f"Skipping page at {url}: Content size exceeds maximum limit.")
+            return []
         try:
             soup = BeautifulSoup(resp.raw_response.content, 'lxml')
 
@@ -163,14 +163,12 @@ def normalize_url(url) -> str:
 
 
 
-def has_minimal_content(html_content) -> bool:
-    """ Check if the HTML content is empty or trivially small. """
-    if len(html_content.strip()) == 0:
-        return False
-    soup = BeautifulSoup(html_content, 'html.parser')
-    text = soup.get_text(strip = True)
-    # Check if the text content is too short, indicating a lack of real content
-    if len(text) < 50:  # Example threshold, adjust based on typical content length
+def has_acceptable_size(resp) -> bool:
+    """Check if the HTML content size is within an acceptable range (not exceeding 8 MB)."""
+    max_size_bytes = 8 * 1024 * 1024  # 8 MB in bytes
+    content_length = int(resp.headers.get('Content-Length', 0))
+    # Check if content length exceeds the maximum size
+    if content_length > max_size_bytes:
         return False
     return True
 
@@ -182,5 +180,6 @@ def has_minimal_content(html_content) -> bool:
 def save_data(url, soup, counter_obj):
     counter_obj.update_unique_urls(url)
     counter_obj.add_words(soup, url)
+    counter_obj.update_ics_subdomains(url)
 
 #abdullah's comment
