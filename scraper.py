@@ -182,3 +182,5 @@ def has_minimal_content(html_content) -> bool:
 def save_data(url, soup, counter_obj):
     counter_obj.update_unique_urls(url)
     counter_obj.add_words(soup, url)
+
+#abdullah's comment
