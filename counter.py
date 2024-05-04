@@ -89,7 +89,9 @@ class Counter:
             self.longest_page = (url, word_count)
 
     def get_50_most_common_words(self):
-        # get 50 most common words from the dictionary and return it as a list of tuples with the word and the number
+        # Sort the words by their counts in descending order and return the first 50
+        sorted_words = sorted(self.words.items(), key=lambda x: x[1], reverse=True)
+        return sorted_words[:50]
 
     def register_page(self, page_url):
         """Register a new page URL to the dataset and persist changes."""
@@ -100,13 +102,8 @@ class Counter:
     def persist_data_to_file(self):
         """Persist the current state to a text file."""
         with open("info_report.txt", "w") as file_handle:
-            data_content = f"Unique Pages: {self.unique_pages}\n" \
+            data_content = f"Unique Pages: {self.unique_urls}\n" \
                            f"Longest Page: {self.longest_page}\n" \
-                           f"Top 50 Words: {self.fetch_top_50_words()}\n" \
-                           f"ICS Subdomains: {self.ics_subdomains}\n" \
-                           f"Total Words: {self.word_count}\n" \
-                           f"Hashed Entries: {self._hasher.retrieve_all_hashes()}\n" \
-                           f"Documents List: {self.documents}"
+                           f"Top 50 Words: {self.get_50_most_common_words()}\n" \
+                           f"ICS Subdomains: {self.ics_subdomains}\n"
             file_handle.write(data_content)
-
-
