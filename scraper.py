@@ -176,7 +176,7 @@ def normalize_url(url) -> str:
 
 def has_acceptable_size(resp) -> bool:
     """Check if the HTML content size is within an acceptable range (not exceeding 8 MB)."""
-    max_size_bytes = 8 * 1024 * 1024  # 8 MB in bytes
+    max_size_bytes = 10 * 1024 * 1024  # 8 MB in bytes
     content_length = int(resp.headers.get('Content-Length', 0))
     # Check if content length exceeds the maximum size
     if content_length > max_size_bytes:
