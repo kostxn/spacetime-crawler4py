@@ -99,7 +99,7 @@ class Counter:
 
     def persist_data_to_file(self):
         """Persist the current state to a text file."""
-        with open("allInfo.txt", "w") as file_handle:
+        with open("info_report.txt", "w") as file_handle:
             data_content = f"Unique Pages: {self.unique_pages}\n" \
                            f"Longest Page: {self.longest_page}\n" \
                            f"Top 50 Words: {self.fetch_top_50_words()}\n" \
