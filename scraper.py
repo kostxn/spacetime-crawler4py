@@ -7,8 +7,6 @@ import counter
 import urllib.error
 
 
-unique_urls = set()
-subdomain_pages = {}
 
 
 # def scraper(url, resp):
@@ -39,7 +37,7 @@ def scraper(url, resp, counter_obj) -> list:
 
 def check_ics_subdomain(resp, counter_obj):
     # check if the resp.url is an ics subdomain and if it is, it will update the ics subdomain
-    # dicitonary of the counter object
+    # dictionary of the counter object
     parsed = urlparse(resp.url)
     if parsed.netloc.endswith("ics.uci.edu"):
         counter_obj.update_ics_subdomains(parsed)
@@ -164,10 +162,6 @@ def normalize_url(url) -> str:
     return normalized_url
 
 
-def add_url(url):
-    normalized = normalize_url(url)
-    unique_urls.add(normalized)
-
 
 def has_minimal_content(html_content) -> bool:
     """ Check if the HTML content is empty or trivially small. """
@@ -179,6 +173,9 @@ def has_minimal_content(html_content) -> bool:
     if len(text) < 50:  # Example threshold, adjust based on typical content length
         return False
     return True
+
+
+
 
 
 # Function to get and save the data of the websites encountered

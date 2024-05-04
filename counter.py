@@ -88,6 +88,8 @@ class Counter:
         if word_count > self.longest_page[1]:
             self.longest_page = (url, word_count)
 
+    def get_50_most_common_words(self):
+        # get 50 most common words from the dictionary and return it as a list of tuples with the word and the number
 
 
 
