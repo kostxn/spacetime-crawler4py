@@ -8,7 +8,7 @@ import urllib.error
 
 
 
-
+count = 0
 # def scraper(url, resp):
 #     linky = extract_next_links(url, resp)
 #     return [link for link in linky if is_valid(link)]
@@ -46,6 +46,9 @@ def check_ics_subdomain(resp, counter_obj):
 
 # using normalize_url
 def extract_next_links(url, resp, counter_obj) -> list:
+    count += 1
+    if count % 40 == 0:
+        counter_obj.persist_data_to_file()
     links = set()
     if resp.status in range(200, 300):  # Check if the response status is OK
         if not has_acceptable_size(resp):
