@@ -7,6 +7,14 @@ import counter
 import urllib.error
 
 
+def empty_page_hash() -> str:
+    """Returns the hash of a representative empty page."""
+    empty_page_html = "<html><head></head><body></body></html>"
+    return hashlib.md5(empty_page_html.encode('utf-8')).hexdigest()
+
+
+BASELINE_HASH = empty_page_hash()
+SIMILARITY_THRESHOLD = 0.85
 
 count = 0
 # def scraper(url, resp):
@@ -176,7 +184,18 @@ def has_acceptable_size(resp) -> bool:
     return True
 
 
+def get_content_hash(html_content):
+    soup = BeautifulSoup(html_content, 'lxml')
+    text = soup.get_text(strip=True)
+    return hashlib.md5(text.encode('utf-8')).hexdigest()
 
+
+def jaccard_similarity(hash1, hash2):
+    set1 = set(hash1)
+    set2 = set(hash2)
+    intersection = set1.intersection(set2)
+    union = set1.union(set2)
+    return len(intersection) / len(union)
 
 
 # Function to get and save the data of the websites encountered
